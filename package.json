@@ -1,0 +1,20 @@
+{
+  "name": "resource-auto-tag-cdk",
+  "version": "0.1.0",
+  "bin": {
+    "resource-auto-tag-cdk": "bin/resource-auto-tag-cdk.js"
+  },
+  "scripts": {
+    "build": "echo \"The build step is not required when using JavaScript!\" && exit 0",
+    "cdk": "cdk",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.93.0",
+    "jest": "^29.6.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.93.0",
+    "constructs": "^10.0.0"
+  }
+}
