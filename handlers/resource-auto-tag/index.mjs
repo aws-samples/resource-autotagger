@@ -112,6 +112,9 @@ async function processResourceARN(ArnString, CTEvents) {
   //console.log("Searching Arn " + ArnString + " and " + ArnAltId);
   for (var idx=0; idx<CTEvents.length; idx++) {
     var foundIt =  await arnFinder(CTEvents[idx], ArnString, ArnAltId);
+    if (!foundIt) {
+      foundIt =  await arnFinder(JSON.parse(CTEvents[idx].CloudTrailEvent), ArnString, ArnAltId);
+    }        
     if (foundIt) {
       console.log("Arn " + ArnString + " is found in CloudTrail ");
       console.log(CTEvents[idx]);
