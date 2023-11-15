@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
-const cdk = require('aws-cdk-lib');
+const {App, Aspects} = require('aws-cdk-lib');
 const { ResourceAutoTagCdkStack } = require('../lib/resource-auto-tag-cdk-stack');
+const { AwsSolutionsChecks } = require('cdk-nag');
 
-const app = new cdk.App();
+const app = new App();
+
 new ResourceAutoTagCdkStack(app, 'ResourceAutoTagCdkStack', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
@@ -19,3 +21,4 @@ new ResourceAutoTagCdkStack(app, 'ResourceAutoTagCdkStack', {
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
 });
+Aspects.of(app).add(new AwsSolutionsChecks());

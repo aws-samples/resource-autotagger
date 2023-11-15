@@ -1,0 +1,457 @@
+{
+  "version": "tree-0.1",
+  "tree": {
+    "id": "App",
+    "path": "",
+    "children": {
+      "ResourceAutoTagCdkStack": {
+        "id": "ResourceAutoTagCdkStack",
+        "path": "ResourceAutoTagCdkStack",
+        "children": {
+          "ResourceAutoTaggingMap": {
+            "id": "ResourceAutoTaggingMap",
+            "path": "ResourceAutoTagCdkStack/ResourceAutoTaggingMap",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "ResourceAutoTagCdkStack/ResourceAutoTaggingMap/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "ID",
+                        "attributeType": "N"
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "ID",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "provisionedThroughput": {
+                      "readCapacityUnits": 5,
+                      "writeCapacityUnits": 5
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.93.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "ResourceAutoTagCdkStack/ResourceAutoTaggingMap/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.93.0"
+            }
+          },
+          "Custom::LambdaDynamodbLoaderCustomResourceProvider": {
+            "id": "Custom::LambdaDynamodbLoaderCustomResourceProvider",
+            "path": "ResourceAutoTagCdkStack/Custom::LambdaDynamodbLoaderCustomResourceProvider",
+            "children": {
+              "Staging": {
+                "id": "Staging",
+                "path": "ResourceAutoTagCdkStack/Custom::LambdaDynamodbLoaderCustomResourceProvider/Staging",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.AssetStaging",
+                  "version": "2.93.0"
+                }
+              },
+              "Role": {
+                "id": "Role",
+                "path": "ResourceAutoTagCdkStack/Custom::LambdaDynamodbLoaderCustomResourceProvider/Role",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.93.0"
+                }
+              },
+              "Handler": {
+                "id": "Handler",
+                "path": "ResourceAutoTagCdkStack/Custom::LambdaDynamodbLoaderCustomResourceProvider/Handler",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CustomResourceProvider",
+              "version": "2.93.0"
+            }
+          },
+          "LambdaDynamodbLoaderCustomResource": {
+            "id": "LambdaDynamodbLoaderCustomResource",
+            "path": "ResourceAutoTagCdkStack/LambdaDynamodbLoaderCustomResource",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "ResourceAutoTagCdkStack/LambdaDynamodbLoaderCustomResource/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CustomResource",
+              "version": "2.93.0"
+            }
+          },
+          "ResourceAutoTagSchedulerLambdaRole": {
+            "id": "ResourceAutoTagSchedulerLambdaRole",
+            "path": "ResourceAutoTagCdkStack/ResourceAutoTagSchedulerLambdaRole",
+            "children": {
+              "ImportResourceAutoTagSchedulerLambdaRole": {
+                "id": "ImportResourceAutoTagSchedulerLambdaRole",
+                "path": "ResourceAutoTagCdkStack/ResourceAutoTagSchedulerLambdaRole/ImportResourceAutoTagSchedulerLambdaRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.93.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "ResourceAutoTagCdkStack/ResourceAutoTagSchedulerLambdaRole/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "lambda.amazonaws.com"
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "policies": [
+                      {
+                        "policyName": "inlinePolicy",
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "cloudwatch:PutMetricData",
+                                "ec2:DescribeInstances",
+                                "ec2:DescribeVolumes"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": "*",
+                              "Sid": "ResourceAutoTaggerObserveAnnotate"
+                            },
+                            {
+                              "Action": [
+                                "ec2:CreateTags",
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                "arn:aws:ec2:*:987902534125:instance/*",
+                                "arn:aws:ec2:*:987902534125:volume/*",
+                                "arn:aws:logs:ca-central-1:987902534125:log-group:/aws/lambda/*",
+                                "arn:aws:logs:ca-central-1:987902534125:log-group:/aws/lambda/*:log-stream:*"
+                              ],
+                              "Sid": "ResourceAutoTaggerCreateUpdate"
+                            },
+                            {
+                              "Action": [
+                                "iam:ListRoleTags",
+                                "iam:ListUserTags",
+                                "logs:DescribeLogGroups",
+                                "logs:DescribeLogStreams",
+                                "logs:GetLogEvents",
+                                "ssm:GetParametersByPath"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                "arn:aws:iam::987902534125:role/*",
+                                "arn:aws:iam::987902534125:user/*",
+                                "arn:aws:logs:ca-central-1:987902534125:log-group:/aws/lambda/*",
+                                "arn:aws:logs:ca-central-1:987902534125:log-group:/aws/lambda/*:log-stream:*",
+                                "arn:aws:ssm:*:987902534125:parameter/*"
+                              ],
+                              "Sid": "ResourceAutoTaggerRead"
+                            },
+                            {
+                              "Action": "dynamodb:Scan",
+                              "Effect": "Allow",
+                              "Resource": {
+                                "Fn::Join": [
+                                  "",
+                                  [
+                                    "arn:aws:dynamodb:ca-central-1:987902534125:table/",
+                                    {
+                                      "Ref": "ResourceAutoTaggingMapAD1FCC99"
+                                    }
+                                  ]
+                                ]
+                              },
+                              "Sid": "ResourceAutoTaggerDynamoDB"
+                            },
+                            {
+                              "Action": "resource-explorer-2:Search",
+                              "Effect": "Allow",
+                              "Resource": "arn:aws:resource-explorer-2:ca-central-1:987902534125:view/*/*",
+                              "Sid": "ResourceAutoTaggerResourceExplorer2"
+                            },
+                            {
+                              "Action": "cloudtrail:LookupEvents",
+                              "Effect": "Allow",
+                              "Resource": "*",
+                              "Sid": "ResourceAutoTaggerCloudTrailEvents"
+                            },
+                            {
+                              "Action": "s3:PutBucketTagging",
+                              "Effect": "Allow",
+                              "Resource": "arn:aws:s3:::*",
+                              "Sid": "ResourceAutoTaggerS3Tagging"
+                            },
+                            {
+                              "Action": "tag:TagResources",
+                              "Effect": "Allow",
+                              "Resource": "*",
+                              "Sid": "ResourceAutoTaggerResourceGroupTagging"
+                            },
+                            {
+                              "Action": "lambda:TagResource",
+                              "Effect": "Allow",
+                              "Resource": "arn:aws:lambda:ca-central-1:987902534125:function:*",
+                              "Sid": "ResourceAutoTaggerLambdaTagging"
+                            },
+                            {
+                              "Action": "ecs:TagResource",
+                              "Effect": "Allow",
+                              "Resource": "arn:aws:ecs:ca-central-1:987902534125:cluster/*",
+                              "Sid": "ResourceAutoTaggerECSTagging"
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.93.0"
+            }
+          },
+          "resource-auto-tag1": {
+            "id": "resource-auto-tag1",
+            "path": "ResourceAutoTagCdkStack/resource-auto-tag1",
+            "children": {
+              "Code": {
+                "id": "Code",
+                "path": "ResourceAutoTagCdkStack/resource-auto-tag1/Code",
+                "children": {
+                  "Stage": {
+                    "id": "Stage",
+                    "path": "ResourceAutoTagCdkStack/resource-auto-tag1/Code/Stage",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.AssetStaging",
+                      "version": "2.93.0"
+                    }
+                  },
+                  "AssetBucket": {
+                    "id": "AssetBucket",
+                    "path": "ResourceAutoTagCdkStack/resource-auto-tag1/Code/AssetBucket",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_s3.BucketBase",
+                      "version": "2.93.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3_assets.Asset",
+                  "version": "2.93.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "ResourceAutoTagCdkStack/resource-auto-tag1/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Lambda::Function",
+                  "aws:cdk:cloudformation:props": {
+                    "code": {
+                      "s3Bucket": {
+                        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+                      },
+                      "s3Key": "c8bfa2f962628cca11cb6bf0410c2fbf44f00d7cd5ca0bafe5d82821680a1ffb.zip"
+                    },
+                    "environment": {
+                      "variables": {
+                        "tableName": {
+                          "Ref": "ResourceAutoTaggingMapAD1FCC99"
+                        }
+                      }
+                    },
+                    "handler": "index.handler",
+                    "memorySize": 256,
+                    "role": {
+                      "Fn::GetAtt": [
+                        "ResourceAutoTagSchedulerLambdaRole9FC430CB",
+                        "Arn"
+                      ]
+                    },
+                    "runtime": "nodejs18.x",
+                    "timeout": 300
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_lambda.Function",
+              "version": "2.93.0"
+            }
+          },
+          "ResourceAutoTagScheduleRule": {
+            "id": "ResourceAutoTagScheduleRule",
+            "path": "ResourceAutoTagCdkStack/ResourceAutoTagScheduleRule",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "ResourceAutoTagCdkStack/ResourceAutoTagScheduleRule/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Events::Rule",
+                  "aws:cdk:cloudformation:props": {
+                    "scheduleExpression": "rate(30 minutes)",
+                    "state": "ENABLED",
+                    "targets": [
+                      {
+                        "id": "Target0",
+                        "arn": {
+                          "Fn::GetAtt": [
+                            "resourceautotag12FCD995D",
+                            "Arn"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_events.CfnRule",
+                  "version": "2.93.0"
+                }
+              },
+              "AllowEventRuleResourceAutoTagCdkStackresourceautotag11B4169E9": {
+                "id": "AllowEventRuleResourceAutoTagCdkStackresourceautotag11B4169E9",
+                "path": "ResourceAutoTagCdkStack/ResourceAutoTagScheduleRule/AllowEventRuleResourceAutoTagCdkStackresourceautotag11B4169E9",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Lambda::Permission",
+                  "aws:cdk:cloudformation:props": {
+                    "action": "lambda:InvokeFunction",
+                    "functionName": {
+                      "Fn::GetAtt": [
+                        "resourceautotag12FCD995D",
+                        "Arn"
+                      ]
+                    },
+                    "principal": "events.amazonaws.com",
+                    "sourceArn": {
+                      "Fn::GetAtt": [
+                        "ResourceAutoTagScheduleRule50E1068A",
+                        "Arn"
+                      ]
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_lambda.CfnPermission",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_events.Rule",
+              "version": "2.93.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "ResourceAutoTagCdkStack/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "ResourceAutoTagCdkStack/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.93.0"
+                }
+              },
+              "Condition": {
+                "id": "Condition",
+                "path": "ResourceAutoTagCdkStack/CDKMetadata/Condition",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnCondition",
+                  "version": "2.93.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.2.70"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "ResourceAutoTagCdkStack/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.93.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "ResourceAutoTagCdkStack/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.93.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.93.0"
+        }
+      },
+      "Tree": {
+        "id": "Tree",
+        "path": "Tree",
+        "constructInfo": {
+          "fqn": "constructs.Construct",
+          "version": "10.2.70"
+        }
+      }
+    },
+    "constructInfo": {
+      "fqn": "aws-cdk-lib.App",
+      "version": "2.93.0"
+    }
+  }
+}
