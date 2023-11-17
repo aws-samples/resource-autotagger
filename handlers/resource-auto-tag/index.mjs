@@ -69,6 +69,25 @@ async function getResourceExplorer2List(resourceType) {
   return res;
 }
 
+async function getResourceExplorer2ListGlobal(resourceType) {
+  var params = {
+    QueryString: `resourcetype:${resourceType} -tag.${TAG_KEY}=${TAG_VALUE} region:global`, 
+    MaxResults: Number('100') 
+  };
+  console.log("resourceType " + resourceType);
+  console.log(params);
+  const command = new SearchCommand(params);
+  var res = await re2Client.send(command);
+
+  //for (var item in res.Resources) {
+  //  console.log("item :");
+  //  console.log(res.Resources[item]);
+  //  console.log(res.Resources[item].Properties[0].Data);
+  //}
+  return res;
+}
+
+
 async function getCloudTrailRecord(eventName, eventSource) {
 
   var endDate = new Date();
@@ -114,7 +133,7 @@ async function processResourceARN(ArnString, CTEvents) {
     var foundIt =  await arnFinder(CTEvents[idx], ArnString, ArnAltId);
     if (!foundIt) {
       foundIt =  await arnFinder(JSON.parse(CTEvents[idx].CloudTrailEvent), ArnString, ArnAltId);
-    }        
+    }    
     if (foundIt) {
       console.log("Arn " + ArnString + " is found in CloudTrail ");
       console.log(CTEvents[idx]);
@@ -289,6 +308,12 @@ export const handler = async (event) => {
     var reResult = await getResourceExplorer2List(res[i].REResourceType.S);
     console.log("reResult");
     console.log(reResult);
+
+    //if no result, try to search in global region. Eg S3 is listed as Global in RE
+    if (reResult.Resources.length == 0) {
+       reResult = await getResourceExplorer2ListGlobal(res[i].REResourceType.S);
+           console.log("reResult count " + reResult.Resources.length);
+    }
     
     if (reResult.Resources.length > 0) {
       var ctResult = await getCloudTrailRecord(res[i].CTEventName.S, res[i].CTEventSource.S);
