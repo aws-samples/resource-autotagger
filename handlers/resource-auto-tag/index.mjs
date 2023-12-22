@@ -1,18 +1,17 @@
-import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { ResourceExplorer2Client, SearchCommand } from "@aws-sdk/client-resource-explorer-2";
 import { CloudTrailClient, LookupEventsCommand } from "@aws-sdk/client-cloudtrail";
 import { IAMClient, ListUserTagsCommand, ListRoleTagsCommand } from "@aws-sdk/client-iam";
 import { SSMClient, GetParametersByPathCommand } from "@aws-sdk/client-ssm";
 import { ResourceGroupsTaggingAPIClient, TagResourcesCommand } from "@aws-sdk/client-resource-groups-tagging-api";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
-const ddbClient = new DynamoDBClient();
 const re2Client = new ResourceExplorer2Client();
 const ctClient = new CloudTrailClient();
 const iamClient = new IAMClient();
 const ssmClient = new SSMClient();
 const rgtaClient = new ResourceGroupsTaggingAPIClient();
+const s3Client = new S3Client();
 
-const DYNAMODB_TABLE = 'ResourceAutoTaggingMap';
 const TAG_KEY = 'blog';
 const TAG_VALUE = 'ResourceAutoTagEnhanced';
 const DURATION_IN_MINUTES = 14320;
@@ -34,59 +33,25 @@ async function arnFinder(jsonObject, searchedArn, searchedId) {
   return false;
 }
 
-async function getEventListFromDynamoDB() {
-
-  var params = { TableName: process.env.tableName };
-  let scanResults = [];
-  let items;
-  do {
-      
-    var command = new ScanCommand(params);
-    items = await ddbClient.send(command);      
-      
-    //items = await ddb.scan(params).promise();
-    items.Items.forEach((item) => scanResults.push(item));
-    params.ExclusiveStartKey = items.LastEvaluatedKey;
-  } while (typeof items.LastEvaluatedKey != "undefined");
-  return scanResults;
-}
-
-async function getResourceExplorer2List(resourceType) {
+async function getResourceExplorer2List(resourceType, isGlobal) {
+  
+  var region = isGlobal ? 'global': process.env.AWS_REGION;
   var params = {
-    QueryString: `resourcetype:${resourceType} -tag.${TAG_KEY}=${TAG_VALUE} region:${process.env.AWS_REGION}`, 
-    MaxResults: Number('100') 
+    QueryString: `resourcetype:${resourceType} -tag.${TAG_KEY}=${TAG_VALUE} region:${region}`, 
+    MaxResults: Number('1000') 
   };
   console.log("resourceType " + resourceType);
   console.log(params);
-  const command = new SearchCommand(params);
-  var res = await re2Client.send(command);
-
-  //for (var item in res.Resources) {
-  //  console.log("item :");
-  //  console.log(res.Resources[item]);
-  //  console.log(res.Resources[item].Properties[0].Data);
-  //}
-  return res;
+  try {
+    const command = new SearchCommand(params);
+    var res = await re2Client.send(command);
+  
+    return res;
+  } catch (error) {
+    console.error('error in getResourceExplorer2List ', error)
+    return null;
+  }
 }
-
-async function getResourceExplorer2ListGlobal(resourceType) {
-  var params = {
-    QueryString: `resourcetype:${resourceType} -tag.${TAG_KEY}=${TAG_VALUE} region:global`, 
-    MaxResults: Number('100') 
-  };
-  console.log("resourceType " + resourceType);
-  console.log(params);
-  const command = new SearchCommand(params);
-  var res = await re2Client.send(command);
-
-  //for (var item in res.Resources) {
-  //  console.log("item :");
-  //  console.log(res.Resources[item]);
-  //  console.log(res.Resources[item].Properties[0].Data);
-  //}
-  return res;
-}
-
 
 async function getCloudTrailRecord(eventName, eventSource) {
 
@@ -94,8 +59,8 @@ async function getCloudTrailRecord(eventName, eventSource) {
   var startDate = new Date(endDate);
   var minDuration = DURATION_IN_MINUTES;
   startDate.setMinutes(endDate.getMinutes() - minDuration);
-  console.log("start date " + startDate);
-  console.log("end date " + endDate);
+  //console.log("start date " + startDate);
+  //console.log("end date " + endDate);
   
   var params = {
     LookupAttributes: [
@@ -107,13 +72,18 @@ async function getCloudTrailRecord(eventName, eventSource) {
           AttributeKey: "EventSource",
           AttributeValue: eventSource
       }],  
-      MaxResults: Number("100"),
+      MaxResults: Number("1000"),
       StartTime: startDate,
       EndTime: endDate
   };
-  var command = new LookupEventsCommand(params);
-  var res = await ctClient.send(command);
-  return res;
+  try {
+    var command = new LookupEventsCommand(params);
+    var res = await ctClient.send(command);
+    return res;
+  } catch (error) {
+    console.error('error in getCloudTrailRecord ', error)
+    return null;    
+  }
 }
 
 async function processResourceARN(ArnString, CTEvents) {
@@ -297,37 +267,53 @@ async function tagResourceByARN(ArnString, tagList) {
   }
 }
 
+async function getJSONfromS3() {
+
+  const command = new GetObjectCommand({
+    Key: "mapping.json",
+    Bucket: process.env.bucketName
+  });
+  const response = await s3Client.send(command);
+  try {
+    const jsonString = await response.Body?.transformToString();
+    const json = JSON.parse(jsonString ?? '')
+    return json
+  } catch (error) {
+    console.error('error parsing json', error)
+    return null
+  }
+}
+
 export const handler = async (event) => {
     
-  // Get list of all resource type from DynamoDB
-  var res = await getEventListFromDynamoDB();
-  console.log(res);
-
-  // For each resource type, query resource explorer resources that has no tagging, and collect its ARN
-  for (var i=0; i < res.length; i++) {
-    var reResult = await getResourceExplorer2List(res[i].REResourceType.S);
-    console.log("reResult");
-    console.log(reResult);
-
-    //if no result, try to search in global region. Eg S3 is listed as Global in RE
-    if (reResult.Resources.length == 0) {
-       reResult = await getResourceExplorer2ListGlobal(res[i].REResourceType.S);
-           console.log("reResult count " + reResult.Resources.length);
-    }
-    
-    if (reResult.Resources.length > 0) {
-      var ctResult = await getCloudTrailRecord(res[i].CTEventName.S, res[i].CTEventSource.S);
-      console.log("CT result for " + res[i].CTEventName.S + " " + res[i].CTEventSource.S);
-      console.log(ctResult);
-
-      for (var j=0; j < reResult.Resources.length; j++) {
-        //Get ARN from reResult.Resources[j].Arn and match CT event and find out who created it and tag it 
-        await processResourceARN(reResult.Resources[j].Arn, ctResult.Events)
+  // Get list of all resource type from mapping file stored in S3
+  var jsonMapping = await getJSONfromS3();
+  var res = jsonMapping.Mapping;
+  //console.log(res);
+  
+  if (res == null || res == '') {
+    console.error('Error in reading mapping.json')
+    return
+  } else {
+    // For each resource type, query resource explorer resources that has no tagging, and collect its ARN
+    for (var i=0; i < res.length; i++) {
+      var reResult = await getResourceExplorer2List(res[i].REResourceType, res[i].Global);
+      //console.log("reResult");
+      //console.log(reResult);
+  
+      if (reResult != null && reResult.Resources.length > 0) {
+        var ctResult = await getCloudTrailRecord(res[i].CTEventName, res[i].CTEventSource);
+        //console.log("CT result for " + res[i].CTEventName + " " + res[i].CTEventSource);
+        //console.log(ctResult);
+  
+        for (var j=0; j < reResult.Resources.length; j++) {
+          //Get ARN from reResult.Resources[j].Arn and match CT event and find out who created it and tag it 
+          await processResourceARN(reResult.Resources[j].Arn, ctResult.Events)
+        }
       }
+      
     }
-    
-  }
-    
+  }  
   const response = {
     statusCode: 200,
     body: JSON.stringify('Resource Auto Tagging done'),
