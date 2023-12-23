@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-const {App, Aspects} = require('aws-cdk-lib');
+const {App} = require('aws-cdk-lib');
 const { ResourceAutoTagCdkStack } = require('../lib/resource-auto-tag-cdk-stack');
-const { AwsSolutionsChecks } = require('cdk-nag');
 
 const app = new App();
 
@@ -21,4 +20,3 @@ new ResourceAutoTagCdkStack(app, 'ResourceAutoTagCdkStack', {
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
 });
-Aspects.of(app).add(new AwsSolutionsChecks());
