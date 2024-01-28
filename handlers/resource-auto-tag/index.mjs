@@ -14,7 +14,7 @@ const s3Client = new S3Client();
 
 const TAG_KEY = 'blog';
 const TAG_VALUE = 'ResourceAutoTagEnhanced';
-const DURATION_IN_MINUTES = 14320;
+const DURATION_IN_MINUTES = 14400;
 
 async function arnFinder(jsonObject, searchedArn, searchedId) {
   if (Array.isArray(jsonObject)) {
@@ -40,8 +40,8 @@ async function getResourceExplorer2List(resourceType, isGlobal) {
     QueryString: `resourcetype:${resourceType} -tag.${TAG_KEY}=${TAG_VALUE} region:${region}`, 
     MaxResults: Number('1000') 
   };
-  console.log("resourceType " + resourceType);
-  console.log(params);
+  //console.log("resourceType " + resourceType);
+  //console.log(params);
   try {
     const command = new SearchCommand(params);
     var res = await re2Client.send(command);
@@ -105,11 +105,11 @@ async function processResourceARN(ArnString, CTEvents) {
       foundIt =  await arnFinder(JSON.parse(CTEvents[idx].CloudTrailEvent), ArnString, ArnAltId);
     }    
     if (foundIt) {
-      console.log("Arn " + ArnString + " is found in CloudTrail ");
-      console.log(CTEvents[idx]);
+      //console.log("Arn " + ArnString + " is found in CloudTrail ");
+      //console.log(CTEvents[idx]);
       
       var tagList = await generateTaggingFromCloudTrail(CTEvents[idx]);
-      console.log("Generated tagList " + JSON.stringify(tagList));
+      //console.log("Generated tagList " + JSON.stringify(tagList));
       
       await tagResourceByARN(ArnString, tagList);
       
@@ -298,13 +298,9 @@ export const handler = async (event) => {
     // For each resource type, query resource explorer resources that has no tagging, and collect its ARN
     for (var i=0; i < res.length; i++) {
       var reResult = await getResourceExplorer2List(res[i].REResourceType, res[i].Global);
-      //console.log("reResult");
-      //console.log(reResult);
   
       if (reResult != null && reResult.Resources.length > 0) {
         var ctResult = await getCloudTrailRecord(res[i].CTEventName, res[i].CTEventSource);
-        //console.log("CT result for " + res[i].CTEventName + " " + res[i].CTEventSource);
-        //console.log(ctResult);
   
         for (var j=0; j < reResult.Resources.length; j++) {
           //Get ARN from reResult.Resources[j].Arn and match CT event and find out who created it and tag it 
